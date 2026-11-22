@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 
 import '../models.dart';
 import '../theme.dart';
@@ -18,10 +19,11 @@ class JoinScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final CemoColors c = context.c;
-    return Scaffold(
-      body: SafeArea(
+    return FScaffold(
+      childPad: false,
+      child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: Space.page),
           child: Column(
             children: <Widget>[
               Expanded(
@@ -88,9 +90,11 @@ class _SwitchLine extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           Text(text, style: Tx.ui(context).copyWith(color: context.c.t2)),
-          TextButton(
-            onPressed: onTap,
-            child: Text(link, style: Tx.uiStrong(context).copyWith(color: context.c.accent)),
+          FButton(
+            variant: FButtonVariant.ghost,
+            mainAxisSize: MainAxisSize.min,
+            onPress: onTap,
+            child: Text(link, style: TextStyle(color: context.c.accent)),
           ),
         ],
       ),
@@ -112,7 +116,6 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   final TextEditingController _name = TextEditingController();
   final TextEditingController _email = TextEditingController();
   final TextEditingController _password = TextEditingController();
-  bool _hide = true;
 
   @override
   void dispose() {
@@ -128,31 +131,16 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     _enter(context);
   }
 
-  InputDecoration _decoration(String label, {Widget? suffix, String? helper}) {
-    final CemoColors c = context.c;
-    return InputDecoration(
-      labelText: label,
-      helperText: helper,
-      labelStyle: Tx.ui(context).copyWith(color: c.t2),
-      helperStyle: Tx.meta(context),
-      suffixIcon: suffix,
-      enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: c.border)),
-      focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: c.t1)),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final bool signUp = widget.signUp;
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          tooltip: 'Back',
-          icon: const Icon(Icons.chevron_left, size: 28),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+    return FScaffold(
+      childPad: false,
+      header: FHeader.nested(
+        prefixes: <Widget>[FHeaderAction.back(semanticsLabel: 'Back', onPress: () => Navigator.of(context).pop())],
       ),
-      body: SafeArea(
+      child: SafeArea(
+        top: false,
         child: Form(
           key: _form,
           child: ListView(
@@ -164,37 +152,29 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                   style: Tx.excerpt(context)),
               const SizedBox(height: 24),
               if (signUp) ...<Widget>[
-                TextFormField(
-                  controller: _name,
+                FTextFormField(
+                  control: FTextFieldControl.managed(controller: _name),
+                  label: const Text('Name'),
                   textCapitalization: TextCapitalization.words,
                   textInputAction: TextInputAction.next,
-                  decoration: _decoration('Name'),
                   validator: (String? v) => (v == null || v.trim().isEmpty) ? 'Enter your name' : null,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: Space.lg),
               ],
-              TextFormField(
-                controller: _email,
-                keyboardType: TextInputType.emailAddress,
+              FTextFormField.email(
+                control: FTextFieldControl.managed(controller: _email),
+                label: const Text('Email'),
                 autocorrect: false,
                 textInputAction: TextInputAction.next,
-                decoration: _decoration('Email'),
                 validator: (String? v) => (v == null || !v.contains('@')) ? 'Enter a valid email address' : null,
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _password,
-                obscureText: _hide,
+              const SizedBox(height: Space.lg),
+              FTextFormField.password(
+                control: FTextFieldControl.managed(controller: _password),
+                label: const Text('Password'),
+                description: signUp ? const Text('At least 8 characters') : null,
                 textInputAction: TextInputAction.done,
-                onFieldSubmitted: (_) => _submit(),
-                decoration: _decoration(
-                  'Password',
-                  helper: signUp ? 'At least 8 characters' : null,
-                  suffix: TextButton(
-                    onPressed: () => setState(() => _hide = !_hide),
-                    child: Text(_hide ? 'Show' : 'Hide', style: Tx.ui(context).copyWith(color: context.c.t2)),
-                  ),
-                ),
+                onSubmit: (_) => _submit(),
                 validator: (String? v) => (v == null || v.length < 8) ? 'Use at least 8 characters' : null,
               ),
               const SizedBox(height: 28),

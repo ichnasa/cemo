@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 
 import '../models.dart';
 import '../sheets.dart';
@@ -23,20 +24,11 @@ class _SelectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 52,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: Row(
-          children: <Widget>[
-            IconButton(tooltip: 'Cancel selection', icon: const Icon(Icons.close), onPressed: onClose),
-            const SizedBox(width: 4),
-            Text('$count', style: Tx.subhead(context)),
-            const Spacer(),
-            ...actions,
-          ],
-        ),
-      ),
+    return FHeader.nested(
+      titleAlignment: AlignmentDirectional.centerStart,
+      title: Text('$count', style: Tx.subhead(context)),
+      prefixes: <Widget>[FHeaderAction.x(semanticsLabel: 'Cancel selection', onPress: onClose)],
+      suffixes: actions,
     );
   }
 }
@@ -67,20 +59,23 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    final CemoColors c = context.c;
-    Widget tab(int index, IconData off, IconData on, String label) {
-      final bool selected = _tab == index;
-      return IconButton(
-        tooltip: label,
-        isSelected: selected,
-        iconSize: 26,
-        onPressed: () => setState(() => _tab = index),
-        icon: Icon(selected ? on : off, color: selected ? c.t1 : c.t2),
-      );
-    }
+    FBottomNavigationBarItem tab(IconData icon, String label) =>
+        FBottomNavigationBarItem(icon: Icon(icon), label: Text(label), semanticsLabel: label);
 
-    return Scaffold(
-      body: SafeArea(
+    return FScaffold(
+      childPad: false,
+      footer: FBottomNavigationBar(
+        safeAreaBottom: true,
+        index: _tab,
+        onChange: (int index) => setState(() => _tab = index),
+        children: <Widget>[
+          tab(FLucideIcons.house, 'Notes'),
+          tab(FLucideIcons.search, 'Search'),
+          tab(FLucideIcons.bell, 'Reminders'),
+          tab(FLucideIcons.user, 'Profile'),
+        ],
+      ),
+      child: SafeArea(
         bottom: false,
         child: IndexedStack(
           index: _tab,
@@ -90,24 +85,6 @@ class _HomeShellState extends State<HomeShell> {
             RemindersTab(active: _tab == 2),
             const ProfileTab(),
           ],
-        ),
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(color: c.bg, border: Border(top: BorderSide(color: c.divider))),
-        child: SafeArea(
-          top: false,
-          child: SizedBox(
-            height: 56,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: <Widget>[
-                tab(0, Icons.home_outlined, Icons.home, 'Notes'),
-                tab(1, Icons.search, Icons.search, 'Search'),
-                tab(2, Icons.notifications_none, Icons.notifications, 'Reminders'),
-                tab(3, Icons.person_outline, Icons.person, 'Profile'),
-              ],
-            ),
-          ),
         ),
       ),
     );
@@ -208,7 +185,6 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   Widget _header(BuildContext context) {
-    final CemoColors c = context.c;
     if (_selecting) {
       final bool allPinned = _selected.every((Category cat) => cat.pinned);
       return _SelectionHeader(
@@ -216,17 +192,25 @@ class _HomeTabState extends State<HomeTab> {
         onClose: _clear,
         actions: _inArchive
             ? <Widget>[
-                IconButton(tooltip: 'Restore from archive', icon: const Icon(Icons.unarchive_outlined), onPressed: _unarchive),
-                IconButton(tooltip: 'Delete permanently', icon: const Icon(Icons.delete_outline), onPressed: _deleteForever),
+                FHeaderAction(
+                  semanticsLabel: 'Restore from archive',
+                  icon: const Icon(FLucideIcons.archiveRestore),
+                  onPress: _unarchive,
+                ),
+                FHeaderAction(
+                  semanticsLabel: 'Delete permanently',
+                  icon: const Icon(FLucideIcons.trash2),
+                  onPress: _deleteForever,
+                ),
               ]
             : <Widget>[
-                IconButton(
-                  tooltip: allPinned ? 'Unpin' : 'Pin',
-                  icon: Icon(allPinned ? Icons.push_pin : Icons.push_pin_outlined),
-                  onPressed: _pin,
+                FHeaderAction(
+                  semanticsLabel: allPinned ? 'Unpin' : 'Pin',
+                  icon: Icon(allPinned ? FLucideIcons.pinOff : FLucideIcons.pin),
+                  onPress: _pin,
                 ),
-                IconButton(tooltip: 'Archive', icon: const Icon(Icons.archive_outlined), onPressed: _archive),
-                IconButton(tooltip: 'Delete', icon: const Icon(Icons.delete_outline), onPressed: _deleteToArchive),
+                FHeaderAction(semanticsLabel: 'Archive', icon: const Icon(FLucideIcons.archive), onPress: _archive),
+                FHeaderAction(semanticsLabel: 'Delete', icon: const Icon(FLucideIcons.trash2), onPress: _deleteToArchive),
               ],
       );
     }
@@ -238,17 +222,13 @@ class _HomeTabState extends State<HomeTab> {
           children: <Widget>[
             Text('Cemo', style: Tx.serifTitle(context, size: 26)),
             const Spacer(),
-            OutlinedButton.icon(
-              onPressed: () => showNewCategorySheet(context),
-              icon: Icon(Icons.add, size: 18, color: c.t1),
-              label: Text('Category', style: Tx.uiStrong(context).copyWith(fontSize: 14)),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: c.t1,
-                side: BorderSide(color: c.border),
-                shape: const StadiumBorder(),
-                minimumSize: const Size(0, 36),
-                padding: const EdgeInsets.fromLTRB(10, 0, 14, 0),
-              ),
+            FButton(
+              variant: FButtonVariant.outline,
+              size: FButtonSizeVariant.sm,
+              mainAxisSize: MainAxisSize.min,
+              onPress: () => showNewCategorySheet(context),
+              prefix: const Icon(FLucideIcons.plus),
+              child: const Text('Category'),
             ),
           ],
         ),
@@ -259,7 +239,6 @@ class _HomeTabState extends State<HomeTab> {
   @override
   Widget build(BuildContext context) {
     final AppState state = AppScope.of(context);
-    final CemoColors c = context.c;
     final List<Category> list = _inArchive
         ? state.archivedCategories
         : state.sortedCategories.where((Category cat) => _filter == 0 || cat.pinned).toList();
@@ -330,17 +309,12 @@ class _HomeTabState extends State<HomeTab> {
             Positioned(
               right: 16,
               bottom: 16,
-              child: FloatingActionButton(
-                tooltip: 'New note',
-                onPressed: widget.onNewNote,
-                backgroundColor: c.primaryFill,
-                foregroundColor: c.primaryText,
-                elevation: 0,
-                focusElevation: 0,
-                hoverElevation: 0,
-                highlightElevation: 0,
-                shape: const CircleBorder(),
-                child: const Icon(Icons.edit_outlined),
+              child: FButton.icon(
+                variant: FButtonVariant.primary,
+                size: FButtonSizeVariant.lg,
+                semanticsLabel: 'New note',
+                onPress: widget.onNewNote,
+                child: const Icon(FLucideIcons.squarePen),
               ),
             ),
         ],
@@ -369,8 +343,8 @@ class _CategoryRow extends StatelessWidget {
     final bool unread = category.unread > 0;
     return Semantics(
       selected: selected,
-      child: InkWell(
-      onTap: onTap,
+      child: FTappable.static(
+      onPress: onTap,
       onLongPress: onLongPress,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
@@ -400,7 +374,7 @@ class _CategoryRow extends StatelessWidget {
                           shape: BoxShape.circle,
                           border: Border.all(color: c.bg, width: 2),
                         ),
-                        child: Icon(Icons.check, size: 12, color: c.bg),
+                        child: Icon(FLucideIcons.check, size: 12, color: c.bg),
                       ),
                     ),
                   ),
@@ -425,7 +399,7 @@ class _CategoryRow extends StatelessWidget {
                               Flexible(child: Text(category.name, overflow: TextOverflow.ellipsis, style: Tx.subhead(context))),
                               if (category.pinned) ...<Widget>[
                                 const SizedBox(width: 6),
-                                Icon(Icons.push_pin, size: 12, color: c.t2, semanticLabel: 'Pinned'),
+                                Icon(FLucideIcons.pin, size: 12, color: c.t2, semanticLabel: 'Pinned'),
                               ],
                             ],
                           ),
@@ -474,7 +448,7 @@ class _CategoryRow extends StatelessWidget {
                                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: c.bg)),
                                 )
                               : (category.hasOpenReminder
-                                  ? Icon(Icons.notifications, size: 15, color: c.reminder, semanticLabel: 'Has a reminder')
+                                  ? Icon(FLucideIcons.bellRing, size: 15, color: c.reminder, semanticLabel: 'Has a reminder')
                                   : null),
                         ),
                       ],
@@ -532,8 +506,8 @@ class _SearchTabState extends State<SearchTab> {
           ),
         ));
         for (final Note n in hits) {
-          results.add(InkWell(
-            onTap: () => openCategory(context, cat, focus: n),
+          results.add(FTappable.static(
+            onPress: () => openCategory(context, cat, focus: n),
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 24),
               padding: const EdgeInsets.symmetric(vertical: 12),
@@ -555,40 +529,19 @@ class _SearchTabState extends State<SearchTab> {
     return Column(
       children: <Widget>[
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: Container(
-            height: 40,
-            decoration: BoxDecoration(color: c.bg2, borderRadius: BorderRadius.circular(999)),
-            padding: const EdgeInsets.only(left: 14),
-            child: Row(
-              children: <Widget>[
-                Icon(Icons.search, size: 18, color: c.t2),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _query,
-                    textInputAction: TextInputAction.search,
-                    style: Tx.ui(context),
-                    onChanged: (_) => setState(() {}),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      border: InputBorder.none,
-                      hintText: 'Search notes and links',
-                      hintStyle: Tx.ui(context).copyWith(color: c.t3),
-                    ),
-                  ),
-                ),
-                if (q.isNotEmpty)
-                  IconButton(
-                    tooltip: 'Clear search',
-                    icon: Icon(Icons.close, size: 16, color: c.t2),
-                    onPressed: () => setState(_query.clear),
-                  ),
-              ],
+          padding: const EdgeInsets.fromLTRB(Space.lg, Space.sm, Space.lg, Space.sm),
+          child: FTextField(
+            control: FTextFieldControl.managed(controller: _query, onChange: (_) => setState(() {})),
+            textInputAction: TextInputAction.search,
+            hint: 'Search notes and links',
+            prefixBuilder: (BuildContext context, FTextFieldStyle style, Set<FTextFieldVariant> variants) => Padding(
+              padding: const EdgeInsetsDirectional.only(start: Space.md),
+              child: Icon(FLucideIcons.search, size: 18, color: c.t2),
             ),
+            clearable: (TextEditingValue value) => value.text.isNotEmpty,
           ),
         ),
-        Divider(height: 1, color: c.divider),
+        const Hairline(),
         Expanded(
           child: q.isEmpty
               ? Center(child: Text('Search across every note, link and conversation.', style: Tx.excerpt(context)))
@@ -728,11 +681,15 @@ class _RemindersTabState extends State<RemindersTab> {
               onClose: _clear,
               actions: <Widget>[
                 if (_tab != 2)
-                  IconButton(tooltip: 'Mark as done', icon: const Icon(Icons.check), onPressed: _markSelectedDone),
-                IconButton(
-                  tooltip: _tab == 2 ? 'Delete permanently' : 'Delete reminder',
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: _deleteSelected,
+                  FHeaderAction(
+                    semanticsLabel: 'Mark as done',
+                    icon: const Icon(FLucideIcons.check),
+                    onPress: _markSelectedDone,
+                  ),
+                FHeaderAction(
+                  semanticsLabel: _tab == 2 ? 'Delete permanently' : 'Delete reminder',
+                  icon: const Icon(FLucideIcons.trash2),
+                  onPress: _deleteSelected,
                 ),
               ],
             )
@@ -840,23 +797,24 @@ class _ReminderRowState extends State<_ReminderRow> {
           opacity: 1 - 0.8 * v,
           child: Semantics(
             selected: widget.selected,
-            child: InkWell(
-              onTap: widget.onTap,
+            child: FTappable.static(
+              onPress: widget.onTap,
               onLongPress: widget.onLongPress,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 color: widget.selected ? c.bg2 : c.bg2.withAlpha(0),
-                padding: const EdgeInsets.only(left: 4, right: 16),
+                padding: const EdgeInsets.only(left: Space.lg, right: Space.lg),
                 child: Row(
                   children: <Widget>[
                     IgnorePointer(
                       ignoring: widget.selecting,
-                      child: Checkbox(
+                      child: FCheckbox(
+                        semanticsLabel: done ? 'Mark as not done' : 'Mark as done',
                         value: done || _leaving,
-                        activeColor: c.accent,
-                        onChanged: (_) => _onCheck(),
+                        onChange: (_) => _onCheck(),
                       ),
                     ),
+                    const SizedBox(width: Space.md),
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 10),
@@ -918,12 +876,14 @@ class ProfileTab extends StatelessWidget {
     }
 
     Widget row(IconData icon, String label, VoidCallback onTap, {Color? color}) {
-      return ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-        leading: Icon(icon, color: color ?? c.t1, size: 22),
-        title: Text(label, style: Tx.ui(context).copyWith(color: color ?? c.t1)),
-        trailing: Icon(Icons.chevron_right, color: c.t2, size: 20),
-        onTap: onTap,
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Space.sm),
+        child: FItem(
+          prefix: Icon(icon, color: color ?? c.t1, size: 22),
+          title: Text(label, style: Tx.ui(context).copyWith(color: color ?? c.t1)),
+          suffix: Icon(FLucideIcons.chevronRight, color: c.t2, size: 20),
+          onPress: onTap,
+        ),
       );
     }
 
@@ -945,11 +905,11 @@ class ProfileTab extends StatelessWidget {
           ),
         ),
         const Overline('More', padding: EdgeInsets.fromLTRB(24, 24, 24, 0)),
-        row(Icons.chat_bubble_outline, 'Send feedback', () {
+        row(FLucideIcons.messageCircle, 'Send feedback', () {
           Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const FeedbackScreen()));
         }),
-        row(Icons.replay, 'Replay onboarding', state.replayOnboarding),
-        row(Icons.logout, 'Log out', state.signOut, color: c.destructive),
+        row(FLucideIcons.rotateCcw, 'Replay onboarding', state.replayOnboarding),
+        row(FLucideIcons.logOut, 'Log out', state.signOut, color: c.destructive),
       ],
     );
   }
@@ -959,13 +919,13 @@ class ProfileTab extends StatelessWidget {
 IconData? _previewIcon(NoteKind kind) {
   switch (kind) {
     case NoteKind.link:
-      return Icons.link;
+      return FLucideIcons.link;
     case NoteKind.image:
-      return Icons.photo_outlined;
+      return FLucideIcons.image;
     case NoteKind.video:
-      return Icons.videocam_outlined;
+      return FLucideIcons.video;
     case NoteKind.document:
-      return Icons.insert_drive_file_outlined;
+      return FLucideIcons.file;
     case NoteKind.text:
     case NoteKind.checklist:
       return null;

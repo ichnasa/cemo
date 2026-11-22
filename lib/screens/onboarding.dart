@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 
 import '../models.dart';
 import '../theme.dart';
@@ -67,8 +68,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final CemoColors c = context.c;
     final _Page page = _pages[_index];
     final bool last = _index == _pages.length - 1;
-    return Scaffold(
-      body: SafeArea(
+    return FScaffold(
+      childPad: false,
+      child: SafeArea(
         child: Column(
           children: <Widget>[
             SizedBox(
@@ -97,9 +99,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     ),
                     const Spacer(),
                     if (!last)
-                      TextButton(
-                        onPressed: _finish,
-                        child: Text('Skip', style: Tx.ui(context).copyWith(color: c.t2)),
+                      FButton(
+                        variant: FButtonVariant.ghost,
+                        mainAxisSize: MainAxisSize.min,
+                        onPress: _finish,
+                        child: Text('Skip', style: TextStyle(color: c.t2)),
                       ),
                   ],
                 ),
@@ -146,9 +150,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     height: 44,
                     child: page.secondary == null
                         ? null
-                        : TextButton(
-                            onPressed: _next,
-                            child: Text(page.secondary!, style: Tx.ui(context)),
+                        : FButton(
+                            variant: FButtonVariant.ghost,
+                            onPress: _next,
+                            child: Text(page.secondary!),
                           ),
                   ),
                 ],
