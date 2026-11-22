@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_selector/file_selector.dart' as fs;
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
@@ -119,27 +120,24 @@ Future<void> _addDocument(BuildContext context, AppState state, Category categor
 }
 
 Future<_Source?> _showSourceSheet(BuildContext context) {
-  final CemoColors c = context.c;
-  Widget row(BuildContext context, IconData icon, String label, _Source value) => ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-        leading: Icon(icon, color: c.t1),
+  Widget row(BuildContext context, IconData icon, String label, _Source value) => FItem(
+        prefix: Icon(icon, color: context.c.t1),
         title: Text(label, style: Tx.ui(context).copyWith(fontSize: 16)),
-        onTap: () => Navigator.of(context).pop(value),
+        onPress: () => Navigator.of(context).pop(value),
       );
-  return showModalBottomSheet<_Source>(
-    context: context,
-    backgroundColor: c.elevated,
-    showDragHandle: true,
-    builder: (BuildContext context) => SafeArea(
+  return showCemoSheet<_Source>(
+    context,
+    (BuildContext context) => SafeArea(
+      top: false,
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.fromLTRB(Space.sm, 0, Space.sm, Space.sm),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            row(context, Icons.photo_camera_outlined, 'Take a photo', _Source.photo),
-            row(context, Icons.videocam_outlined, 'Record a video', _Source.video),
-            row(context, Icons.photo_library_outlined, 'Choose from photos', _Source.library),
-            row(context, Icons.insert_drive_file_outlined, 'Add a document', _Source.document),
+            row(context, FLucideIcons.camera, 'Take a photo', _Source.photo),
+            row(context, FLucideIcons.video, 'Record a video', _Source.video),
+            row(context, FLucideIcons.images, 'Choose from photos', _Source.library),
+            row(context, FLucideIcons.file, 'Add a document', _Source.document),
           ],
         ),
       ),
@@ -194,7 +192,7 @@ class MediaTile extends StatelessWidget {
           height: height,
           color: c.bg2,
           alignment: Alignment.center,
-          child: Icon(Icons.broken_image_outlined, color: c.t3, semanticLabel: 'File missing'),
+          child: Icon(FLucideIcons.imageOff, color: c.t3, semanticLabel: 'File missing'),
         );
 
     Widget child;
@@ -210,7 +208,7 @@ class MediaTile extends StatelessWidget {
           width: 44,
           height: 44,
           decoration: const BoxDecoration(color: Color(0x33FFFFFF), shape: BoxShape.circle),
-          child: const Icon(Icons.play_arrow, color: Colors.white, size: 28, semanticLabel: 'Video'),
+          child: const Icon(FLucideIcons.play, color: Colors.white, size: 24, semanticLabel: 'Video'),
         ),
       );
     } else {
@@ -257,7 +255,7 @@ class DocumentCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(color: c.bg2, borderRadius: BorderRadius.circular(4)),
-            child: Icon(Icons.insert_drive_file_outlined, color: c.t2, size: 20),
+            child: Icon(FLucideIcons.file, color: c.t2, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -336,9 +334,7 @@ class _VideoViewState extends State<_VideoView> {
       );
     }
     if (!_controller.value.isInitialized) {
-      return const Center(
-        child: SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70)),
-      );
+      return const Center(child: FCircularProgress(semanticsLabel: 'Loading video'));
     }
     return Column(
       children: <Widget>[
@@ -367,7 +363,7 @@ class _VideoViewState extends State<_VideoView> {
                           width: 56,
                           height: 56,
                           decoration: const BoxDecoration(color: Color(0x66000000), shape: BoxShape.circle),
-                          child: const Icon(Icons.play_arrow, color: Colors.white, size: 34),
+                          child: const Icon(FLucideIcons.play, color: Colors.white, size: 30),
                         ),
                       ),
                     ],
@@ -430,24 +426,13 @@ class _PreviewScreenState extends State<_PreviewScreen> {
   @override
   Widget build(BuildContext context) {
     final int count = widget.items.length;
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          tooltip: 'Cancel',
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          count == 1 ? widget.categoryName : '${_index + 1} of $count',
-          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
-        ),
+    return _ViewerFrame(
+      header: FHeader.nested(
+        title: Text(count == 1 ? widget.categoryName : '${_index + 1} of $count'),
+        prefixes: <Widget>[FHeaderAction.x(semanticsLabel: 'Cancel', onPress: () => Navigator.of(context).pop())],
       ),
-      body: SafeArea(
+      child: SafeArea(
+        top: false,
         child: Column(
           children: <Widget>[
             Expanded(
@@ -476,63 +461,56 @@ class _PreviewScreenState extends State<_PreviewScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: <Widget>[
                   Expanded(
-                    child: Container(
-                      constraints: const BoxConstraints(minHeight: 44),
-                      decoration: BoxDecoration(color: const Color(0xFF242424), borderRadius: BorderRadius.circular(22)),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      // IndexedStack keeps each caption field's text and cursor
-                      // while swiping between items.
-                      child: IndexedStack(
-                        index: _index,
-                        children: <Widget>[
-                          for (int i = 0; i < count; i++)
-                            TextField(
-                              controller: _captions[i],
-                              minLines: 1,
-                              maxLines: 4,
-                              textCapitalization: TextCapitalization.sentences,
-                              style: const TextStyle(color: Colors.white, fontSize: 16, height: 1.4),
-                              cursorColor: Colors.white,
-                              decoration: const InputDecoration(
-                                isDense: true,
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(vertical: 11),
-                                hintText: 'Add a caption (optional)',
-                                hintStyle: TextStyle(color: Color(0xFF9A9A9A), fontSize: 16),
-                              ),
-                            ),
-                        ],
-                      ),
+                    // IndexedStack keeps each caption field's text and cursor
+                    // while swiping between items.
+                    child: IndexedStack(
+                      index: _index,
+                      children: <Widget>[
+                        for (int i = 0; i < count; i++)
+                          FTextField(
+                            control: FTextFieldControl.managed(controller: _captions[i]),
+                            minLines: 1,
+                            maxLines: 4,
+                            textCapitalization: TextCapitalization.sentences,
+                            hint: 'Add a caption (optional)',
+                          ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  Semantics(
-                    button: true,
-                    label: count == 1 ? 'Save to ${widget.categoryName}' : 'Save $count items to ${widget.categoryName}',
-                    child: InkResponse(
-                      onTap: _save,
-                      radius: 26,
-                      child: const SizedBox(
-                        width: 48,
-                        height: 48,
-                        child: Center(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                            child: SizedBox(
-                              width: 36,
-                              height: 36,
-                              child: Icon(Icons.arrow_upward, size: 20, color: Colors.black),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                  const SizedBox(width: Space.sm),
+                  FButton.icon(
+                    variant: FButtonVariant.primary,
+                    semanticsLabel:
+                        count == 1 ? 'Save to ${widget.categoryName}' : 'Save $count items to ${widget.categoryName}',
+                    onPress: _save,
+                    child: const Icon(FLucideIcons.arrowUp, size: 20),
                   ),
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Full-screen media pages always use the dark Cemo theme.
+final FThemeData _viewerTheme = buildCemoFTheme(Brightness.dark);
+
+class _ViewerFrame extends StatelessWidget {
+  const _ViewerFrame({required this.header, required this.child});
+  final Widget header;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return FTheme(
+      data: _viewerTheme,
+      child: FScaffold(
+        childPad: false,
+        header: header,
+        child: ColoredBox(color: Colors.black, child: child),
       ),
     );
   }
@@ -560,33 +538,22 @@ class AttachmentViewerScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String path = Storage.resolve(note.filePath!);
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          tooltip: 'Back',
-          icon: const Icon(Icons.chevron_left, size: 28),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          '${dayLabel(note.time)} ${hhmm(note.time)}',
-          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
-        ),
-        actions: <Widget>[
+    return _ViewerFrame(
+      header: FHeader.nested(
+        title: Text('${dayLabel(note.time)} ${hhmm(note.time)}'),
+        prefixes: <Widget>[FHeaderAction.back(semanticsLabel: 'Back', onPress: () => Navigator.of(context).pop())],
+        suffixes: <Widget>[
           Builder(
-            builder: (BuildContext context) => IconButton(
-              tooltip: 'Share',
-              icon: const Icon(Icons.ios_share),
-              onPressed: () => _share(context),
+            builder: (BuildContext context) => FHeaderAction(
+              semanticsLabel: 'Share',
+              icon: const Icon(FLucideIcons.share),
+              onPress: () => _share(context),
             ),
           ),
         ],
       ),
-      body: SafeArea(
+      child: SafeArea(
+        top: false,
         child: Column(
           children: <Widget>[
             Expanded(
