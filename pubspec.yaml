@@ -1,0 +1,28 @@
+name: cemo
+description: Cemo saves links and notes into conversations, with reminders.
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  path_provider: ^2.1.0   # finds the app's storage folder
+  url_launcher: ^6.3.0    # opens links in the browser or matching app
+  image_picker: ^1.1.0    # camera and photo library
+  share_plus: ^13.0.0     # share sheet for exports and attachments
+  video_player: ^2.9.0    # plays videos saved in notes
+  file_selector: ^1.0.3   # picks a document from the Files app
+  open_filex: ^4.7.0      # opens a saved document in the matching app
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ">=4.0.0 <7.0.0"
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/memo/
