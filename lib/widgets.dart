@@ -1,7 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 
+import 'icons.dart';
 import 'models.dart';
 import 'storage.dart';
 import 'theme.dart';
@@ -23,29 +25,24 @@ class CategoryAvatar extends StatelessWidget {
     final Widget glyph = Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      color: color,
       alignment: Alignment.center,
-      child: Icon(icon, size: size * 0.56, color: Colors.white),
+      child: Icon(lucideCategoryIcon(icon), size: size * 0.5, color: Colors.white),
     );
     final String? path = imagePath;
-    if (path == null || !Storage.ready) return glyph;
-    return ClipOval(
-      child: Image.file(
-        File(Storage.resolve(path)),
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        // Decode small: avatars are tiny, and this keeps scrolling smooth.
-        cacheWidth: (size * 3).round(),
-        errorBuilder: (BuildContext context, Object error, StackTrace? stack) => glyph,
-      ),
+    if (path == null || !Storage.ready) return FAvatar.raw(size: size, child: glyph);
+    return FAvatar(
+      size: size,
+      // Decode small: avatars are tiny, and this keeps scrolling smooth.
+      image: ResizeImage(FileImage(File(Storage.resolve(path))), width: (size * 3).round()),
+      fallback: glyph,
     );
   }
 }
 
 enum PillKind { primary, secondary, text }
 
-/// Black pill (primary), outlined pill (secondary) or plain text button.
+/// Primary, outlined (secondary) or ghost (text) [FButton].
 class PillButton extends StatelessWidget {
   const PillButton({
     super.key,
@@ -64,37 +61,20 @@ class PillButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final CemoColors c = context.c;
-    final bool enabled = onPressed != null;
-    Color fill = Colors.transparent;
-    Color fg = c.t1;
-    BoxBorder? border;
-    if (kind == PillKind.primary) {
-      fill = enabled ? c.primaryFill : c.disabled;
-      fg = enabled ? c.primaryText : c.t3;
-    } else if (kind == PillKind.secondary) {
-      border = Border.all(color: c.border);
-      fg = enabled ? c.t1 : c.t3;
-    }
-    final Widget pill = Container(
+    final FButtonVariant variant = switch (kind) {
+      PillKind.primary => FButtonVariant.primary,
+      PillKind.secondary => FButtonVariant.outline,
+      PillKind.text => FButtonVariant.ghost,
+    };
+    return SizedBox(
       height: height,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: BoxDecoration(color: fill, border: border, borderRadius: BorderRadius.circular(999)),
-      alignment: Alignment.center,
-      child: Text(
-        label,
-        style: Tx.uiStrong(context).copyWith(
-          color: fg,
-          fontWeight: kind == PillKind.primary ? FontWeight.w600 : FontWeight.w400,
-        ),
-      ),
-    );
-    return Semantics(
-      button: true,
-      enabled: enabled,
-      child: PressScale(
-        onTap: onPressed,
-        child: expand ? SizedBox(width: double.infinity, child: pill) : pill,
+      width: expand ? double.infinity : null,
+      child: FButton(
+        variant: variant,
+        size: FButtonSizeVariant.lg,
+        mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+        onPress: onPressed,
+        child: Text(label),
       ),
     );
   }
@@ -160,7 +140,7 @@ class ReminderChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Icon(Icons.notifications, size: 12, color: color),
+          Icon(FLucideIcons.bellRing, size: 12, color: color),
           const SizedBox(width: 5),
           Text(
             reminderLabel(when),
@@ -239,7 +219,8 @@ class EmptyState extends StatelessWidget {
   }
 }
 
-/// Horizontal text tabs with a 1 pt underline on the selected one.
+/// Segmented [FTabs] used as a filter: only the tab strip is shown, the
+/// caller renders the content for [selected] below it.
 class TopicTabs extends StatelessWidget {
   const TopicTabs({super.key, required this.labels, required this.selected, required this.onSelect});
 
@@ -249,34 +230,13 @@ class TopicTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final CemoColors c = context.c;
-    return Container(
-      height: 45,
-      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: c.divider))),
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        itemCount: labels.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 24),
-        itemBuilder: (BuildContext context, int i) {
-          final bool on = i == selected;
-          return Semantics(
-            button: true,
-            selected: on,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => onSelect(i),
-              child: Container(
-                height: 44,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  border: Border(bottom: BorderSide(color: on ? c.t1 : Colors.transparent)),
-                ),
-                child: Text(labels[i], style: Tx.tab(context).copyWith(color: on ? c.t1 : c.t2)),
-              ),
-            ),
-          );
-        },
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Space.lg, Space.xs, Space.lg, Space.sm),
+      child: FTabs(
+        control: FTabControl.lifted(index: selected, onChange: onSelect),
+        children: <FTabEntry>[
+          for (final String label in labels) FTabEntry(label: Text(label), child: const SizedBox.shrink()),
+        ],
       ),
     );
   }
