@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 
 import '../theme.dart';
 import '../widgets.dart';
@@ -45,8 +46,9 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   Widget build(BuildContext context) {
     final CemoColors c = context.c;
     if (_sent) {
-      return Scaffold(
-        body: SafeArea(
+      return FScaffold(
+        childPad: false,
+        child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
             child: Column(
@@ -76,9 +78,14 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     }
 
     final bool canSend = _text.text.trim().isNotEmpty;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Send feedback')),
-      body: SafeArea(
+    return FScaffold(
+      childPad: false,
+      header: FHeader.nested(
+        title: const Text('Send feedback'),
+        prefixes: <Widget>[FHeaderAction.back(semanticsLabel: 'Back', onPress: () => Navigator.of(context).pop())],
+      ),
+      child: SafeArea(
+        top: false,
         child: Column(
           children: <Widget>[
             Expanded(
@@ -94,70 +101,40 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                     runSpacing: 8,
                     children: <Widget>[
                       for (int i = 0; i < _kinds.length; i++)
-                        Semantics(
+                        FButton(
+                          variant: i == _kind ? FButtonVariant.primary : FButtonVariant.outline,
+                          mainAxisSize: MainAxisSize.min,
                           selected: i == _kind,
-                          button: true,
-                          child: GestureDetector(
-                            onTap: () => setState(() => _kind = i),
-                            child: Container(
-                              height: 44,
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: i == _kind ? c.primaryFill : null,
-                                border: i == _kind ? null : Border.all(color: c.border),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(
-                                _kinds[i],
-                                style: Tx.ui(context).copyWith(color: i == _kind ? c.primaryText : c.t1),
-                              ),
-                            ),
-                          ),
+                          onPress: () => setState(() => _kind = i),
+                          child: Text(_kinds[i]),
                         ),
                     ],
                   ),
                   const SizedBox(height: 20),
                   Text('Your feedback', style: Tx.caption(context)),
                   const SizedBox(height: 6),
-                  TextField(
-                    controller: _text,
+                  FTextField(
+                    control: FTextFieldControl.managed(controller: _text),
+                    minLines: 6,
                     maxLines: 6,
                     maxLength: _maxLength,
-                    style: Tx.bodySerif(context),
-                    decoration: InputDecoration(
-                      hintText: 'What happened, or what would you like to see?',
-                      hintStyle: Tx.bodySerif(context).copyWith(color: c.t3),
-                      filled: true,
-                      fillColor: c.bg2,
-                      contentPadding: const EdgeInsets.all(14),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide.none),
-                    ),
+                    hint: 'What happened, or what would you like to see?',
                   ),
                   const SizedBox(height: 12),
                   Text('Email for a reply (optional)', style: Tx.caption(context)),
-                  TextField(
-                    controller: _email,
-                    keyboardType: TextInputType.emailAddress,
+                  const SizedBox(height: 6),
+                  FTextField.email(
+                    control: FTextFieldControl.managed(controller: _email),
+                    label: null,
                     autocorrect: false,
-                    style: Tx.ui(context).copyWith(fontSize: 17),
-                    decoration: InputDecoration(
-                      hintText: 'you@example.com',
-                      hintStyle: Tx.ui(context).copyWith(fontSize: 17, color: c.t3),
-                      enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: c.border)),
-                      focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: c.t1)),
-                    ),
+                    hint: 'you@example.com',
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    children: <Widget>[
-                      Expanded(child: Text('Include app version and device model', style: Tx.ui(context))),
-                      Switch(
-                        value: _includeDevice,
-                        activeTrackColor: c.accent,
-                        onChanged: (bool v) => setState(() => _includeDevice = v),
-                      ),
-                    ],
+                  FSwitch(
+                    leadingLabel: true,
+                    label: Text('Include app version and device model', style: Tx.ui(context)),
+                    value: _includeDevice,
+                    onChange: (bool v) => setState(() => _includeDevice = v),
                   ),
                 ],
               ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 
 import '../attachments.dart';
 import '../models.dart';
@@ -68,21 +69,20 @@ class _ConversationMediaScreenState extends State<ConversationMediaScreen> {
           ? empty('No documents yet. Tap the camera in the conversation, then “Add a document”.')
           : ListView.separated(
               itemCount: docs.length,
-              separatorBuilder: (BuildContext context, int i) => Divider(height: 1, indent: 72, color: c.divider),
+              separatorBuilder: (BuildContext context, int i) => const Hairline(indent: 72),
               itemBuilder: (BuildContext context, int i) {
                 final Note n = docs[i];
                 final String size = fileSizeLabel(n.fileSize);
-                return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  leading: Container(
+                return FItem(
+                  prefix: Container(
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(color: c.bg2, borderRadius: BorderRadius.circular(4)),
-                    child: Icon(Icons.insert_drive_file_outlined, color: c.t2, size: 20),
+                    child: Icon(FLucideIcons.file, color: c.t2, size: 20),
                   ),
                   title: Text(n.fileName ?? 'Document', maxLines: 2, overflow: TextOverflow.ellipsis, style: Tx.subhead(context)),
                   subtitle: Text(size.isEmpty ? dayLabel(n.time) : '$size · ${dayLabel(n.time)}', style: Tx.meta(context)),
-                  onTap: () => openAttachment(context, n),
+                  onPress: () => openAttachment(context, n),
                 );
               },
             );
@@ -91,35 +91,32 @@ class _ConversationMediaScreenState extends State<ConversationMediaScreen> {
     } else {
       body = ListView.separated(
         itemCount: links.length,
-        separatorBuilder: (BuildContext context, int i) => Divider(height: 1, indent: 72, color: c.divider),
+        separatorBuilder: (BuildContext context, int i) => const Hairline(indent: 72),
         itemBuilder: (BuildContext context, int i) {
           final Note n = links[i];
-          return ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            leading: Container(
+          return FItem(
+            prefix: Container(
               width: 40,
               height: 40,
               decoration: BoxDecoration(color: c.bg2, borderRadius: BorderRadius.circular(4)),
-              child: Icon(Icons.link, color: c.t2, size: 20),
+              child: Icon(FLucideIcons.link, color: c.t2, size: 20),
             ),
             title: Text(n.linkTitle ?? n.link ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: Tx.subhead(context)),
             subtitle: Text('${n.linkDomain ?? ''} · ${dayLabel(n.time)}', style: Tx.meta(context)),
-            onTap: () => openLink(context, n.link),
+            onPress: () => openLink(context, n.link),
           );
         },
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          tooltip: 'Back',
-          icon: const Icon(Icons.chevron_left, size: 28),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+    return FScaffold(
+      childPad: false,
+      header: FHeader.nested(
         title: Text(widget.category.name),
+        prefixes: <Widget>[FHeaderAction.back(semanticsLabel: 'Back', onPress: () => Navigator.of(context).pop())],
       ),
-      body: SafeArea(
+      child: SafeArea(
+        top: false,
         child: Column(
           children: <Widget>[
             TopicTabs(
