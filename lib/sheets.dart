@@ -2,32 +2,41 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'icons.dart';
 import 'models.dart';
 import 'storage.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
-int _snackSeq = 0;
+FToasterEntry? _lastToast;
 
-/// Short message at the bottom. It always leaves by itself after 2 seconds,
-/// including when it has an action button.
+/// Short message at the bottom (an [FToast]). It always leaves by itself after
+/// 2 seconds, including when it has an action button, and replaces any message
+/// still on screen.
 void showCemoSnack(BuildContext context, String message, {String? actionLabel, VoidCallback? onAction}) {
-  final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-  final int seq = ++_snackSeq;
-  messenger.hideCurrentSnackBar();
-  messenger.showSnackBar(SnackBar(
-    content: Text(message),
+  final FToasterEntry? previous = _lastToast;
+  if (previous != null && previous.showing) previous.dismiss();
+  _lastToast = showFToast(
+    context: context,
+    title: Text(message),
     duration: const Duration(seconds: 2),
-    action: actionLabel == null ? null : SnackBarAction(label: actionLabel, onPressed: onAction ?? () {}),
-  ));
-  // Newer Flutter versions keep a snackbar with an action on screen until it is
-  // tapped, so close it explicitly unless a newer message has replaced it.
-  Timer(const Duration(seconds: 2), () {
-    if (seq == _snackSeq && messenger.mounted) messenger.hideCurrentSnackBar();
-  });
+    suffixBuilder: actionLabel == null
+        ? null
+        : (BuildContext context, FToasterEntry entry) => FButton(
+              variant: FButtonVariant.ghost,
+              size: FButtonSizeVariant.sm,
+              mainAxisSize: MainAxisSize.min,
+              onPress: () {
+                entry.dismiss();
+                onAction?.call();
+              },
+              child: Text(actionLabel, style: TextStyle(color: context.c.accent)),
+            ),
+  );
 }
 
 /// Opens a web address in the browser, or in the app that handles it
@@ -55,27 +64,37 @@ Future<bool> confirmDialog(
   required String confirmLabel,
   bool destructive = false,
 }) async {
-  final bool? ok = await showDialog<bool>(
+  final bool? ok = await showFDialog<bool>(
     context: context,
-    builder: (BuildContext context) {
-      final CemoColors c = context.c;
-      return AlertDialog(
-        backgroundColor: c.elevated,
-        surfaceTintColor: Colors.transparent,
-        title: Text(title, style: Tx.subhead(context)),
-        content: Text(message, style: Tx.ui(context).copyWith(color: c.t2)),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text('Cancel', style: Tx.ui(context).copyWith(color: c.t2)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(confirmLabel, style: Tx.uiStrong(context).copyWith(color: destructive ? c.destructive : c.t1)),
-          ),
-        ],
-      );
-    },
+    builder: (BuildContext context, FDialogStyle style, Animation<double> animation) => FDialog(
+      style: const FDialogStyleDelta.context(),
+      animation: animation,
+      semanticsLabel: title,
+      builder: (BuildContext context, FDialogStyle style) => Padding(
+        padding: const EdgeInsets.all(Space.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Text(title, style: Tx.subhead(context)),
+            const SizedBox(height: Space.sm),
+            Text(message, style: Tx.ui(context).copyWith(color: context.c.t2)),
+            const SizedBox(height: Space.xl),
+            FButton(
+              variant: destructive ? FButtonVariant.destructive : FButtonVariant.primary,
+              onPress: () => Navigator.of(context).pop(true),
+              child: Text(confirmLabel),
+            ),
+            const SizedBox(height: Space.sm),
+            FButton(
+              variant: FButtonVariant.outline,
+              onPress: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
+      ),
+    ),
   );
   return ok ?? false;
 }
@@ -93,7 +112,50 @@ void setReminderWithUndo(BuildContext context, Note note, DateTime when) {
   );
 }
 
-// ---------- shared sheet header ----------
+// ---------- shared sheet frame and header ----------
+
+/// Opens [builder] in a Forui bottom sheet with the Cemo sheet surface and a
+/// drag handle. Each sheet limits its own height.
+Future<T?> showCemoSheet<T>(BuildContext context, WidgetBuilder builder) {
+  return showFSheet<T>(
+    context: context,
+    side: FLayout.btt,
+    mainAxisMaxRatio: null,
+    resizeToAvoidBottomInset: false,
+    builder: (BuildContext context) => _SheetFrame(child: builder(context)),
+  );
+}
+
+class _SheetFrame extends StatelessWidget {
+  const _SheetFrame({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final CemoColors c = context.c;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: c.elevated,
+        border: Border(top: BorderSide(color: c.border)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(Space.lg)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: Space.md),
+            child: Container(
+              width: 32,
+              height: 4,
+              decoration: BoxDecoration(color: c.border, borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          Flexible(child: child),
+        ],
+      ),
+    );
+  }
+}
 
 class _SheetHeader extends StatelessWidget {
   const _SheetHeader({required this.title});
@@ -109,9 +171,11 @@ class _SheetHeader extends StatelessWidget {
           Text(title, style: Tx.subhead(context)),
           Align(
             alignment: Alignment.centerLeft,
-            child: TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancel', style: Tx.ui(context).copyWith(color: context.c.t2)),
+            child: FButton(
+              variant: FButtonVariant.ghost,
+              mainAxisSize: MainAxisSize.min,
+              onPress: () => Navigator.of(context).pop(),
+              child: Text('Cancel', style: TextStyle(color: context.c.t2)),
             ),
           ),
         ],
@@ -150,12 +214,7 @@ Widget _sheetBody(BuildContext context, {required List<Widget> children, Widget?
 // ---------- reminder sheet ----------
 
 Future<DateTime?> showReminderSheet(BuildContext context, {Note? note}) {
-  return showModalBottomSheet<DateTime>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    builder: (BuildContext context) => _ReminderSheet(note: note),
-  );
+  return showCemoSheet<DateTime>(context, (BuildContext context) => _ReminderSheet(note: note));
 }
 
 DateTime _defaultReminder() {
@@ -207,9 +266,9 @@ class _ReminderSheetState extends State<_ReminderSheet> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: Text(note.preview, maxLines: 2, overflow: TextOverflow.ellipsis, style: Tx.subhead(context)),
           ),
-        Divider(height: 1, color: c.divider),
-        _row(context, icon: Icons.calendar_today_outlined, label: 'Date', trailing: dayLabel(_when), onTap: _pickDate),
-        _row(context, icon: Icons.schedule, label: 'Time', trailing: hhmm(_when), onTap: _pickTime),
+        const Hairline(),
+        _row(context, icon: FLucideIcons.calendar, label: 'Date', trailing: dayLabel(_when), onTap: _pickDate),
+        _row(context, icon: FLucideIcons.clock, label: 'Time', trailing: hhmm(_when), onTap: _pickTime),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
           child: Text(
@@ -229,24 +288,12 @@ class _ReminderSheetState extends State<_ReminderSheet> {
     required VoidCallback onTap,
   }) {
     final CemoColors c = context.c;
-    return InkWell(
-      onTap: onTap,
-      child: SizedBox(
-        height: 52,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: <Widget>[
-              Icon(icon, size: 20, color: c.t2),
-              const SizedBox(width: 14),
-              Expanded(child: Text(label, style: Tx.ui(context))),
-              Text(trailing, style: Tx.uiStrong(context)),
-              const SizedBox(width: 6),
-              Icon(Icons.chevron_right, size: 18, color: c.t2),
-            ],
-          ),
-        ),
-      ),
+    return FItem(
+      prefix: Icon(icon, size: 20, color: c.t2),
+      title: Text(label, style: Tx.ui(context)),
+      details: Text(trailing, style: Tx.uiStrong(context)),
+      suffix: Icon(FLucideIcons.chevronRight, size: 18, color: c.t2),
+      onPress: onTap,
     );
   }
 }
@@ -258,12 +305,9 @@ class _ReminderSheetState extends State<_ReminderSheet> {
 Future<Category?> pickCategory(BuildContext context, {required String title, Category? exclude}) {
   final AppState state = AppScope.of(context);
   final List<Category> list = state.sortedCategories.where((Category c) => c != exclude).toList();
-  return showModalBottomSheet<Category>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    builder: (BuildContext context) {
-      final CemoColors c = context.c;
+  return showCemoSheet<Category>(
+    context,
+    (BuildContext context) {
       return SafeArea(
         top: false,
         child: ConstrainedBox(
@@ -272,7 +316,7 @@ Future<Category?> pickCategory(BuildContext context, {required String title, Cat
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               _SheetHeader(title: title),
-              Divider(height: 1, color: c.divider),
+              const Hairline(),
               Flexible(
                 child: list.isEmpty
                     ? Padding(
@@ -284,12 +328,11 @@ Future<Category?> pickCategory(BuildContext context, {required String title, Cat
                         itemCount: list.length,
                         itemBuilder: (BuildContext context, int i) {
                           final Category cat = list[i];
-                          return ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                            leading: CategoryAvatar(color: cat.color, icon: cat.icon, size: 36, imagePath: cat.imagePath),
+                          return FItem(
+                            prefix: CategoryAvatar(color: cat.color, icon: cat.icon, size: 36, imagePath: cat.imagePath),
                             title: Text(cat.name, style: Tx.ui(context), maxLines: 1, overflow: TextOverflow.ellipsis),
                             subtitle: Text('${cat.notes.length} notes', style: Tx.meta(context)),
-                            onTap: () => Navigator.of(context).pop(cat),
+                            onPress: () => Navigator.of(context).pop(cat),
                           );
                         },
                       ),
@@ -309,12 +352,7 @@ Future<Category?> showNewCategorySheet(BuildContext context) => showCategoryShee
 
 /// The same sheet edits [existing] when it is given.
 Future<Category?> showCategorySheet(BuildContext context, {Category? existing}) {
-  return showModalBottomSheet<Category>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    builder: (BuildContext context) => _CategorySheet(existing: existing),
-  );
+  return showCemoSheet<Category>(context, (BuildContext context) => _CategorySheet(existing: existing));
 }
 
 class _CategorySheet extends StatefulWidget {
@@ -411,22 +449,12 @@ class _CategorySheetState extends State<_CategorySheet> {
               preview,
               const SizedBox(width: 12),
               Expanded(
-                child: TextField(
-                  controller: _name,
+                child: FTextField(
+                  control: FTextFieldControl.managed(controller: _name, onChange: (_) => setState(() {})),
                   autofocus: !editing,
                   textCapitalization: TextCapitalization.sentences,
-                  style: Tx.title(context),
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    hintText: 'Name',
-                    errorText: taken ? 'A category with this name already exists.' : null,
-                    errorStyle: Tx.meta(context).copyWith(color: c.destructive),
-                    errorBorder: UnderlineInputBorder(borderSide: BorderSide(color: c.destructive)),
-                    focusedErrorBorder: UnderlineInputBorder(borderSide: BorderSide(color: c.destructive)),
-                    hintStyle: Tx.title(context).copyWith(color: c.t3),
-                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: c.border)),
-                    focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: c.t1)),
-                  ),
+                  hint: 'Name',
+                  error: taken ? const Text('A category with this name already exists.') : null,
                 ),
               ),
             ],
@@ -524,7 +552,7 @@ class _CategorySheetState extends State<_CategorySheet> {
                           color: i == _icon ? c.t1 : Colors.transparent,
                           border: Border.all(color: i == _icon ? c.t1 : c.border),
                         ),
-                        child: Icon(kCategoryIcons[i], size: 22, color: i == _icon ? c.bg : c.t1),
+                        child: Icon(kCategoryLucideIcons[i], size: 22, color: i == _icon ? c.bg : c.t1),
                       ),
                     ),
                   ),
@@ -541,12 +569,7 @@ class _CategorySheetState extends State<_CategorySheet> {
 
 /// Opens the New note sheet. Returns the category the note was saved to.
 Future<Category?> showNewNoteSheet(BuildContext context, {Category? initial}) {
-  return showModalBottomSheet<Category>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    builder: (BuildContext context) => _NewNoteSheet(initial: initial),
-  );
+  return showCemoSheet<Category>(context, (BuildContext context) => _NewNoteSheet(initial: initial));
 }
 
 class _NewNoteSheet extends StatefulWidget {
@@ -601,50 +624,45 @@ class _NewNoteSheetState extends State<_NewNoteSheet> {
       footer: PillButton(label: 'Save note', onPressed: canSave ? _save : null),
       children: <Widget>[
         const _SheetHeader(title: 'New note'),
-        InkWell(
-          onTap: _choose,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: <Widget>[
-                Text('Save to', style: Tx.meta(context)),
-                const SizedBox(width: 12),
-                if (cat != null) CategoryAvatar(color: cat.color, icon: cat.icon, size: 28, imagePath: cat.imagePath),
-                const SizedBox(width: 10),
-                Expanded(child: Text(cat?.name ?? 'Create a category first', style: Tx.ui(context))),
-                Icon(Icons.chevron_right, color: c.t2),
+        FItem(
+          prefix: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Text('Save to', style: Tx.meta(context)),
+              if (cat != null) ...<Widget>[
+                const SizedBox(width: Space.md),
+                CategoryAvatar(color: cat.color, icon: cat.icon, size: 28, imagePath: cat.imagePath),
               ],
-            ),
+            ],
           ),
+          title: Text(cat?.name ?? 'Create a category first', style: Tx.ui(context)),
+          suffix: Icon(FLucideIcons.chevronRight, color: c.t2),
+          onPress: _choose,
         ),
-        Divider(height: 1, color: c.divider),
+        const Hairline(),
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
-          child: TextField(
-            controller: _text,
+          child: FTextField(
+            control: FTextFieldControl.managed(controller: _text, onChange: (_) => setState(() {})),
             autofocus: true,
             minLines: 4,
             maxLines: 8,
             textCapitalization: TextCapitalization.sentences,
-            style: Tx.bodySerif(context),
-            onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(
-              border: InputBorder.none,
-              hintText: 'Write a note or paste a link…',
-              hintStyle: Tx.bodySerif(context).copyWith(color: c.t3),
-            ),
+            hint: 'Write a note or paste a link…',
           ),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 0, 16, 8),
           child: Row(
             children: <Widget>[
-              IconButton(
-                tooltip: 'Add reminder',
-                onPressed: _remind,
-                icon: Icon(_reminder == null ? Icons.notifications_none : Icons.notifications,
+              FButton.icon(
+                variant: FButtonVariant.ghost,
+                semanticsLabel: 'Add reminder',
+                onPress: _remind,
+                child: Icon(_reminder == null ? FLucideIcons.bell : FLucideIcons.bellRing,
                     color: _reminder == null ? c.t2 : c.reminder),
               ),
+              const SizedBox(width: Space.sm),
               if (_reminder != null) ReminderChip(when: _reminder!),
             ],
           ),
@@ -653,3 +671,4 @@ class _NewNoteSheetState extends State<_NewNoteSheet> {
     );
   }
 }
+

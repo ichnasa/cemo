@@ -289,3 +289,24 @@ class HighlightText extends StatelessWidget {
     return Text.rich(TextSpan(style: style, children: spans));
   }
 }
+
+/// One-pixel [FDivider] in the Cemo divider colour, without Forui's padding.
+class Hairline extends StatelessWidget {
+  const Hairline({super.key, this.indent = 0, this.color});
+
+  /// Empty space before the line.
+  final double indent;
+
+  /// Defaults to the divider colour.
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return FDivider(
+      style: FDividerStyleDelta.delta(
+        color: color ?? context.c.divider,
+        padding: EdgeInsetsGeometryDelta.value(EdgeInsetsDirectional.only(start: indent)),
+      ),
+    );
+  }
+}
