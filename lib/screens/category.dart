@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forui/forui.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../attachments.dart';
@@ -229,145 +230,107 @@ class _CategoryScreenState extends State<CategoryScreen> {
     }
   }
 
-  PreferredSizeWidget _searchBar(BuildContext context) {
-    final CemoColors c = context.c;
-    return AppBar(
-      centerTitle: false,
-      titleSpacing: 0,
-      leading: IconButton(tooltip: 'Close search', icon: const Icon(Icons.chevron_left, size: 28), onPressed: _stopSearch),
-      title: TextField(
-        controller: _search,
+  /// A header with a hairline under it.
+  Widget _bar(Widget header) => Column(mainAxisSize: MainAxisSize.min, children: <Widget>[header, const Hairline()]);
+
+  Widget _searchBar(BuildContext context) {
+    return _bar(FHeader.nested(
+      titleAlignment: AlignmentDirectional.centerStart,
+      prefixes: <Widget>[FHeaderAction.back(semanticsLabel: 'Close search', onPress: _stopSearch)],
+      title: FTextField(
+        control: FTextFieldControl.managed(controller: _search, onChange: (_) => setState(() {})),
         autofocus: true,
         textInputAction: TextInputAction.search,
-        style: Tx.ui(context),
-        onChanged: (_) => setState(() {}),
-        decoration: InputDecoration(
-          border: InputBorder.none,
-          hintText: 'Search in ${widget.category.name}',
-          hintStyle: Tx.ui(context).copyWith(color: c.t3),
-        ),
+        hint: 'Search in ${widget.category.name}',
+        clearable: (TextEditingValue value) => value.text.isNotEmpty,
       ),
-      actions: <Widget>[
-        if (_search.text.isNotEmpty)
-          IconButton(
-            tooltip: 'Clear search',
-            icon: const Icon(Icons.close, size: 20),
-            onPressed: () => setState(_search.clear),
-          ),
-      ],
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1),
-        child: Divider(height: 1, color: c.divider),
-      ),
-    );
+    ));
   }
 
   // ----- build -----
 
-  PreferredSizeWidget _normalBar(BuildContext context) {
-    final CemoColors c = context.c;
+  Widget _normalBar(BuildContext context) {
     final Category cat = widget.category;
-    return AppBar(
-      centerTitle: false,
-      titleSpacing: 0,
-      leading: IconButton(
-        tooltip: 'Back',
-        icon: const Icon(Icons.chevron_left, size: 28),
-        onPressed: () => Navigator.of(context).pop(),
-      ),
-      title: Semantics(
-        button: true,
-        label: 'Edit category ${cat.name}',
-        child: InkWell(
-          onTap: _editCategory,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Row(
-              children: <Widget>[
-                CategoryAvatar(color: cat.color, icon: cat.icon, size: 36, imagePath: cat.imagePath),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(cat.name, style: Tx.subhead(context), overflow: TextOverflow.ellipsis),
-                      Text(cat.notes.isEmpty ? 'No notes yet' : '${cat.notes.length} notes', style: Tx.meta(context)),
-                    ],
-                  ),
+
+    FItem entry(FPopoverController controller, String label, VoidCallback action) => FItem(
+          title: Text(label, style: Tx.ui(context)),
+          onPress: () {
+            controller.hide();
+            action();
+          },
+        );
+
+    return _bar(FHeader.nested(
+      titleAlignment: AlignmentDirectional.centerStart,
+      prefixes: <Widget>[FHeaderAction.back(semanticsLabel: 'Back', onPress: () => Navigator.of(context).pop())],
+      title: FTappable(
+        semanticsLabel: 'Edit category ${cat.name}',
+        onPress: _editCategory,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(
+            children: <Widget>[
+              CategoryAvatar(color: cat.color, icon: cat.icon, size: 36, imagePath: cat.imagePath),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Text(cat.name, style: Tx.subhead(context), overflow: TextOverflow.ellipsis),
+                    Text(cat.notes.isEmpty ? 'No notes yet' : '${cat.notes.length} notes', style: Tx.meta(context)),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
-      actions: <Widget>[
-        PopupMenuButton<String>(
-          tooltip: 'More',
-          icon: const Icon(Icons.more_vert),
-          color: c.elevated,
-          surfaceTintColor: Colors.transparent,
-          onSelected: (String value) {
-            switch (value) {
-              case 'search':
-                _startSearch();
-                break;
-              case 'media':
-                _openMedia();
-                break;
-              case 'clear':
-                _clearConversation();
-                break;
-              case 'export':
-                _exportJson();
-                break;
-            }
-          },
-          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-            PopupMenuItem<String>(value: 'search', child: Text('Search', style: Tx.ui(context))),
-            PopupMenuItem<String>(value: 'media', child: Text('Media, links and docs', style: Tx.ui(context))),
-            PopupMenuItem<String>(value: 'clear', child: Text('Clear conversation', style: Tx.ui(context))),
-            PopupMenuItem<String>(value: 'export', child: Text('Export notes (JSON)', style: Tx.ui(context))),
+      suffixes: <Widget>[
+        FPopoverMenu(
+          menuAnchor: Alignment.topRight,
+          childAnchor: Alignment.bottomRight,
+          menuBuilder: (BuildContext context, FPopoverController controller, List<FItemGroupMixin>? menu) =>
+              <FItemGroupMixin>[
+            FItemGroup(
+              children: <FItemMixin>[
+                entry(controller, 'Search', _startSearch),
+                entry(controller, 'Media, links and docs', _openMedia),
+                entry(controller, 'Clear conversation', _clearConversation),
+                entry(controller, 'Export notes (JSON)', _exportJson),
+              ],
+            ),
           ],
+          builder: (BuildContext context, FPopoverController controller, Widget? child) => FHeaderAction(
+            semanticsLabel: 'More',
+            icon: const Icon(FLucideIcons.ellipsisVertical),
+            onPress: controller.toggle,
+          ),
         ),
       ],
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1),
-        child: Divider(height: 1, color: c.divider),
-      ),
-    );
+    ));
   }
 
-  PreferredSizeWidget _selectionBar(BuildContext context) {
-    final CemoColors c = context.c;
+  Widget _selectionBar(BuildContext context) {
     final bool single = _selected.length == 1;
     final bool allStarred = _selected.every((Note n) => n.starred);
-    return AppBar(
-      centerTitle: false,
-      titleSpacing: 0,
-      leading: IconButton(
-        tooltip: 'Cancel selection',
-        icon: const Icon(Icons.close),
-        onPressed: _clearSelection,
-      ),
+    return _bar(FHeader.nested(
+      titleAlignment: AlignmentDirectional.centerStart,
+      prefixes: <Widget>[FHeaderAction.x(semanticsLabel: 'Cancel selection', onPress: _clearSelection)],
       title: Text('${_selected.length}', style: Tx.subhead(context)),
-      actions: <Widget>[
+      suffixes: <Widget>[
         if (single)
-          IconButton(tooltip: 'Remind me', icon: const Icon(Icons.notifications_none), onPressed: _remindSelected),
-        IconButton(
-          tooltip: allStarred ? 'Unstar' : 'Star',
-          icon: Icon(allStarred ? Icons.star : Icons.star_border),
-          onPressed: _starSelected,
+          FHeaderAction(semanticsLabel: 'Remind me', icon: const Icon(FLucideIcons.bell), onPress: _remindSelected),
+        FHeaderAction(
+          semanticsLabel: allStarred ? 'Unstar' : 'Star',
+          icon: Icon(allStarred ? FLucideIcons.starOff : FLucideIcons.star),
+          onPress: _starSelected,
         ),
-        IconButton(tooltip: 'Copy', icon: const Icon(Icons.content_copy, size: 22), onPressed: _copySelected),
-        IconButton(tooltip: 'Forward', icon: const Icon(Icons.shortcut), onPressed: _forwardSelected),
-        IconButton(tooltip: 'Delete', icon: const Icon(Icons.delete_outline), onPressed: _deleteSelected),
-        const SizedBox(width: 4),
+        FHeaderAction(semanticsLabel: 'Copy', icon: const Icon(FLucideIcons.copy), onPress: _copySelected),
+        FHeaderAction(semanticsLabel: 'Forward', icon: const Icon(FLucideIcons.forward), onPress: _forwardSelected),
+        FHeaderAction(semanticsLabel: 'Delete', icon: const Icon(FLucideIcons.trash2), onPress: _deleteSelected),
       ],
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1),
-        child: Divider(height: 1, color: c.divider),
-      ),
-    );
+    ));
   }
 
   @override
@@ -414,9 +377,11 @@ class _CategoryScreenState extends State<CategoryScreen> {
           _stopSearch();
         }
       },
-      child: Scaffold(
-        appBar: _selecting ? _selectionBar(context) : (_searching ? _searchBar(context) : _normalBar(context)),
-        body: SafeArea(
+      child: FScaffold(
+        childPad: false,
+        header: _selecting ? _selectionBar(context) : (_searching ? _searchBar(context) : _normalBar(context)),
+        child: SafeArea(
+          top: false,
           child: Column(
             children: <Widget>[
               if (!_searching)
@@ -430,7 +395,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
               ),
               if (reminders.isNotEmpty && !_searching)
                 _Bar(
-                  icon: Icons.notifications,
+                  icon: FLucideIcons.bellRing,
                   iconColor: c.reminder,
                   color: c.bg2,
                   text: () {
@@ -486,60 +451,32 @@ class _CategoryScreenState extends State<CategoryScreen> {
     final bool canSend = _input.text.trim().isNotEmpty;
     return Container(
       decoration: BoxDecoration(color: c.bg, border: Border(top: BorderSide(color: c.divider))),
-      padding: const EdgeInsets.fromLTRB(4, 6, 4, 6),
+      padding: const EdgeInsets.fromLTRB(Space.sm, Space.sm, Space.sm, Space.sm),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: <Widget>[
-          IconButton(
-            tooltip: 'Add a photo, video or document',
-            constraints: const BoxConstraints.tightFor(width: 44, height: 44),
-            padding: EdgeInsets.zero,
-            icon: Icon(Icons.photo_camera_outlined, size: 24, color: c.t2),
-            onPressed: _attach,
+          FButton.icon(
+            variant: FButtonVariant.ghost,
+            semanticsLabel: 'Add a photo, video or document',
+            onPress: _attach,
+            child: Icon(FLucideIcons.camera, size: 24, color: c.t2),
           ),
+          const SizedBox(width: Space.xs),
           Expanded(
-            child: Container(
-              constraints: const BoxConstraints(minHeight: 40),
-              decoration: BoxDecoration(color: c.bg2, borderRadius: BorderRadius.circular(20)),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: TextField(
-                controller: _input,
-                minLines: 1,
-                maxLines: 5,
-                textCapitalization: TextCapitalization.sentences,
-                style: Tx.excerpt(context).copyWith(color: c.t1),
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  isDense: true,
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                  hintText: 'Write a note…',
-                  hintStyle: Tx.excerpt(context).copyWith(color: c.t3),
-                ),
-              ),
+            child: FTextField(
+              control: FTextFieldControl.managed(controller: _input, onChange: (_) => setState(() {})),
+              minLines: 1,
+              maxLines: 5,
+              textCapitalization: TextCapitalization.sentences,
+              hint: 'Write a note…',
             ),
           ),
-          const SizedBox(width: 4),
-          Semantics(
-            button: true,
-            label: 'Send',
-            enabled: canSend,
-            child: PressScale(
-              onTap: canSend ? _send : null,
-              child: SizedBox(
-                width: 44,
-                height: 44,
-                child: Center(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 160),
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(color: canSend ? c.primaryFill : c.disabled, shape: BoxShape.circle),
-                    child: Icon(Icons.arrow_upward, size: 18, color: canSend ? c.primaryText : c.t3),
-                  ),
-                ),
-              ),
-            ),
+          const SizedBox(width: Space.xs),
+          FButton.icon(
+            variant: FButtonVariant.primary,
+            semanticsLabel: 'Send',
+            onPress: canSend ? _send : null,
+            child: const Icon(FLucideIcons.arrowUp, size: 18),
           ),
         ],
       ),
@@ -566,10 +503,10 @@ class _Bar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final CemoColors c = context.c;
-    return Material(
+    return ColoredBox(
       color: color,
-      child: InkWell(
-        onTap: onTap,
+      child: FTappable.static(
+        onPress: onTap,
         child: Container(
           height: 44,
           decoration: BoxDecoration(border: Border(bottom: BorderSide(color: c.divider))),
@@ -583,7 +520,7 @@ class _Bar extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(trailing!, style: Tx.meta(context)),
               ],
-              Icon(Icons.chevron_right, size: 18, color: c.t2),
+              Icon(FLucideIcons.chevronRight, size: 18, color: c.t2),
             ],
           ),
         ),
@@ -603,12 +540,12 @@ class _DateSeparator extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
       child: Row(
         children: <Widget>[
-          Expanded(child: Divider(height: 1, color: c.border)),
+          Expanded(child: Hairline(color: c.border)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(label.toUpperCase(), style: Tx.caption(context).copyWith(letterSpacing: 0.5)),
           ),
-          Expanded(child: Divider(height: 1, color: c.border)),
+          Expanded(child: Hairline(color: c.border)),
         ],
       ),
     );
@@ -709,8 +646,9 @@ class NoteMessage extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               for (final CheckItem item in note.items)
-                InkWell(
-                  onTap: () => state.toggleCheck(item),
+                FTappable.static(
+                  semanticsChecked: item.done,
+                  onPress: () => state.toggleCheck(item),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
                     child: Row(
@@ -719,7 +657,7 @@ class NoteMessage extends StatelessWidget {
                       children: <Widget>[
                         Padding(
                           padding: const EdgeInsets.only(top: 2),
-                          child: Icon(item.done ? Icons.check_box : Icons.check_box_outline_blank, size: 22, color: c.t2),
+                          child: Icon(item.done ? FLucideIcons.squareCheck : FLucideIcons.square, size: 22, color: c.t2),
                         ),
                         const SizedBox(width: 10),
                         Flexible(
@@ -755,7 +693,7 @@ class NoteMessage extends StatelessWidget {
               tween: Tween<double>(begin: 0.6, end: 1),
               duration: const Duration(milliseconds: 180),
               builder: (BuildContext context, double v, Widget? child) => Transform.scale(scale: v, child: child),
-              child: Icon(Icons.star, size: 14, color: c.t2, semanticLabel: 'Starred'),
+              child: Icon(FLucideIcons.star, size: 14, color: c.t2, semanticLabel: 'Starred'),
             ),
           Text(hhmm(note.time), style: Tx.caption(context).copyWith(color: c.t3)),
         ],
@@ -824,7 +762,7 @@ class _LinkCard extends StatelessWidget {
               width: 72,
               constraints: const BoxConstraints(minHeight: 72),
               color: c.bg2,
-              child: Icon(Icons.link, color: c.t2),
+              child: Icon(FLucideIcons.link, color: c.t2),
             ),
           ],
         ),

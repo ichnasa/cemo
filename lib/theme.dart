@@ -1,4 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
+
+// The Forui theme ([buildCemoFTheme]) is the single source of truth for the
+// app's colours, typography and spacing. Cemo's own colour tokens ride along
+// on it as an [FColors] extension, and the Material theme that the few
+// remaining Material widgets (date and time pickers) need is derived from it.
 
 /// Colour tokens from the Cemo Foundations board, in Light and Dark.
 @immutable
@@ -84,8 +90,22 @@ class CemoColors extends ThemeExtension<CemoColors> {
 }
 
 extension CemoContext on BuildContext {
-  CemoColors get c => Theme.of(this).extension<CemoColors>()!;
-  bool get isDark => Theme.of(this).brightness == Brightness.dark;
+  /// Cemo colour tokens of the current [FTheme].
+  CemoColors get c => theme.colors.extension<CemoColors>();
+  bool get isDark => theme.colors.brightness == Brightness.dark;
+}
+
+/// Spacing scale from the Foundations board (4 pt grid).
+class Space {
+  static const double xs = 4;
+  static const double sm = 8;
+  static const double md = 12;
+  static const double lg = 16;
+  static const double xl = 24;
+  static const double xxl = 36;
+
+  /// Side padding of screens and lists.
+  static const double page = 24;
 }
 
 /// Serif used for anything the user reads. Georgia ships with iOS; Android
@@ -93,88 +113,79 @@ extension CemoContext on BuildContext {
 const String kSerif = 'Georgia';
 const List<String> kSerifFallback = <String>['Noto Serif', 'serif'];
 
-/// Text styles from the Foundations board.
+/// Text styles from the Foundations board, built on the [FTheme] typography so
+/// the font family comes from one place.
 class Tx {
-  static TextStyle display(BuildContext x) => TextStyle(
-      fontSize: 32, height: 38 / 32, fontWeight: FontWeight.w700, letterSpacing: -0.5, color: x.c.t1);
-  static TextStyle title(BuildContext x) => TextStyle(
-      fontSize: 24, height: 30 / 24, fontWeight: FontWeight.w700, letterSpacing: -0.3, color: x.c.t1);
-  static TextStyle headline(BuildContext x) => TextStyle(
-      fontSize: 20, height: 26 / 20, fontWeight: FontWeight.w700, letterSpacing: -0.2, color: x.c.t1);
-  static TextStyle subhead(BuildContext x) =>
-      TextStyle(fontSize: 16, height: 20 / 16, fontWeight: FontWeight.w700, color: x.c.t1);
-  static TextStyle bodySerif(BuildContext x) => TextStyle(
-      fontFamily: kSerif,
-      fontFamilyFallback: kSerifFallback,
-      fontSize: 17,
-      height: 26 / 17,
-      fontWeight: FontWeight.w400,
-      color: x.c.t1);
-  static TextStyle excerpt(BuildContext x) => TextStyle(
-      fontFamily: kSerif,
-      fontFamilyFallback: kSerifFallback,
-      fontSize: 16,
-      height: 24 / 16,
-      fontWeight: FontWeight.w400,
-      color: x.c.t2);
-  static TextStyle serifTitle(BuildContext x, {double size = 30}) => TextStyle(
-      fontFamily: kSerif,
-      fontFamilyFallback: kSerifFallback,
-      fontSize: size,
-      height: (size + 6) / size,
-      fontWeight: FontWeight.w700,
-      letterSpacing: -0.4,
-      color: x.c.t1);
-  static TextStyle ui(BuildContext x) =>
-      TextStyle(fontSize: 15, height: 20 / 15, fontWeight: FontWeight.w400, color: x.c.t1);
-  static TextStyle uiStrong(BuildContext x) =>
-      TextStyle(fontSize: 15, height: 20 / 15, fontWeight: FontWeight.w600, color: x.c.t1);
-  static TextStyle meta(BuildContext x) =>
-      TextStyle(fontSize: 13, height: 18 / 13, fontWeight: FontWeight.w400, color: x.c.t2);
-  static TextStyle caption(BuildContext x) =>
-      TextStyle(fontSize: 12, height: 16 / 12, fontWeight: FontWeight.w500, color: x.c.t2);
-  static TextStyle tab(BuildContext x) =>
-      TextStyle(fontSize: 14, height: 20 / 14, fontWeight: FontWeight.w400, color: x.c.t2);
+  static TextStyle _sans(BuildContext x, double size, double lineHeight, FontWeight weight, {double? letterSpacing}) =>
+      x.theme.typography.body.md.copyWith(
+        fontSize: size,
+        height: lineHeight / size,
+        fontWeight: weight,
+        letterSpacing: letterSpacing,
+        color: x.c.t1,
+      );
+
+  static TextStyle _serif(BuildContext x, double size, double lineHeight, FontWeight weight, Color color) => TextStyle(
+        fontFamily: kSerif,
+        fontFamilyFallback: kSerifFallback,
+        fontSize: size,
+        height: lineHeight / size,
+        fontWeight: weight,
+        color: color,
+      );
+
+  static TextStyle display(BuildContext x) => _sans(x, 32, 38, FontWeight.w700, letterSpacing: -0.5);
+  static TextStyle title(BuildContext x) => _sans(x, 24, 30, FontWeight.w700, letterSpacing: -0.3);
+  static TextStyle headline(BuildContext x) => _sans(x, 20, 26, FontWeight.w700, letterSpacing: -0.2);
+  static TextStyle subhead(BuildContext x) => _sans(x, 16, 20, FontWeight.w700);
+  static TextStyle bodySerif(BuildContext x) => _serif(x, 17, 26, FontWeight.w400, x.c.t1);
+  static TextStyle excerpt(BuildContext x) => _serif(x, 16, 24, FontWeight.w400, x.c.t2);
+  static TextStyle serifTitle(BuildContext x, {double size = 30}) =>
+      _serif(x, size, size + 6, FontWeight.w700, x.c.t1).copyWith(letterSpacing: -0.4);
+  static TextStyle ui(BuildContext x) => _sans(x, 15, 20, FontWeight.w400);
+  static TextStyle uiStrong(BuildContext x) => _sans(x, 15, 20, FontWeight.w600);
+  static TextStyle meta(BuildContext x) => _sans(x, 13, 18, FontWeight.w400).copyWith(color: x.c.t2);
+  static TextStyle caption(BuildContext x) => _sans(x, 12, 16, FontWeight.w500).copyWith(color: x.c.t2);
+  static TextStyle tab(BuildContext x) => _sans(x, 14, 20, FontWeight.w400).copyWith(color: x.c.t2);
 }
 
-ThemeData buildCemoTheme(Brightness brightness) {
-  final CemoColors c = brightness == Brightness.dark ? CemoColors.dark : CemoColors.light;
-  final ColorScheme scheme = ColorScheme.fromSeed(seedColor: c.accent, brightness: brightness).copyWith(
+/// The app theme: Forui's neutral touch theme recoloured with the Cemo tokens.
+FThemeData buildCemoFTheme(Brightness brightness) {
+  final bool dark = brightness == Brightness.dark;
+  final CemoColors c = dark ? CemoColors.dark : CemoColors.light;
+  final FColors base = dark ? FColors.neutralDark : FColors.neutralLight;
+  final FColors colors = base.copyWith(
+    background: c.bg,
+    foreground: c.t1,
     primary: c.primaryFill,
-    onPrimary: c.primaryText,
-    secondary: c.accent,
-    surface: c.bg,
-    onSurface: c.t1,
+    primaryForeground: c.primaryText,
+    secondary: c.bg2,
+    secondaryForeground: c.t1,
+    muted: c.bg2,
+    mutedForeground: c.t2,
+    destructive: c.destructive,
+    destructiveForeground: const Color(0xFFFFFFFF),
     error: c.destructive,
-  );
-  return ThemeData(
-    useMaterial3: true,
-    brightness: brightness,
-    colorScheme: scheme,
-    scaffoldBackgroundColor: c.bg,
-    dividerColor: c.divider,
-    splashFactory: NoSplash.splashFactory,
-    highlightColor: c.bg2,
+    errorForeground: const Color(0xFFFFFFFF),
+    card: c.elevated,
+    border: c.border,
     extensions: <ThemeExtension<dynamic>>[c],
-    appBarTheme: AppBarTheme(
-      backgroundColor: c.bg,
-      foregroundColor: c.t1,
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      centerTitle: true,
-    ),
-    bottomSheetTheme: BottomSheetThemeData(
-      backgroundColor: c.elevated,
-      surfaceTintColor: Colors.transparent,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-    ),
-    snackBarTheme: SnackBarThemeData(
-      backgroundColor: const Color(0xFF191919),
-      contentTextStyle: const TextStyle(color: Colors.white, fontSize: 15),
-      actionTextColor: const Color(0xFF3FB950),
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-    ),
-    textSelectionTheme: TextSelectionThemeData(cursorColor: c.accent),
   );
+  return FThemeData(
+    debugLabel: dark ? 'Cemo Dark' : 'Cemo Light',
+    colors: colors,
+    touch: true,
+  );
+}
+
+/// Material theme for the remaining Material widgets, derived from [f].
+ThemeData buildCemoMaterialTheme(FThemeData f) {
+  final CemoColors c = f.colors.extension<CemoColors>();
+  return f.toApproximateMaterialTheme().copyWith(
+        scaffoldBackgroundColor: c.bg,
+        splashFactory: NoSplash.splashFactory,
+        highlightColor: c.bg2,
+        extensions: <ThemeExtension<dynamic>>[c],
+        textSelectionTheme: TextSelectionThemeData(cursorColor: c.accent),
+      );
 }

@@ -16,6 +16,7 @@ dependencies:
   video_player: ^2.9.0    # plays videos saved in notes
   file_selector: ^1.0.3   # picks a document from the Files app
   open_filex: ^4.7.0      # opens a saved document in the matching app
+  forui: ^0.25.0          # UI components, theme and Lucide icons (forui_assets)
 
 dev_dependencies:
   flutter_test:
