@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 
 import 'models.dart';
 import 'screens/auth.dart';
@@ -25,6 +26,8 @@ class CemoApp extends StatefulWidget {
 
 class _CemoAppState extends State<CemoApp> {
   late final AppState _state = widget.state ?? AppState();
+  final FThemeData _light = buildCemoFTheme(Brightness.light);
+  final FThemeData _dark = buildCemoFTheme(Brightness.dark);
 
   @override
   void dispose() {
@@ -41,9 +44,14 @@ class _CemoAppState extends State<CemoApp> {
         builder: (BuildContext context, Widget? _) => MaterialApp(
           title: 'Cemo',
           debugShowCheckedModeBanner: false,
-          theme: buildCemoTheme(Brightness.light),
-          darkTheme: buildCemoTheme(Brightness.dark),
+          theme: buildCemoMaterialTheme(_light),
+          darkTheme: buildCemoMaterialTheme(_dark),
           themeMode: _state.themeMode,
+          // The Forui theme follows the Material brightness picked from themeMode.
+          builder: (BuildContext context, Widget? child) => FTheme(
+            data: Theme.of(context).brightness == Brightness.dark ? _dark : _light,
+            child: FToaster(child: child!),
+          ),
           home: const _Gate(),
         ),
       ),
