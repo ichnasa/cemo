@@ -125,6 +125,9 @@ Future<_Source?> _showSourceSheet(BuildContext context) {
         title: Text(label, style: Tx.ui(context).copyWith(fontSize: 16)),
         onPress: () => Navigator.of(context).pop(value),
       );
+  // Desktop platforms have no camera capture in image_picker; offer only the
+  // sources that work there.
+  final bool camera = ImagePicker().supportsImageSource(ImageSource.camera);
   return showCemoSheet<_Source>(
     context,
     (BuildContext context) => SafeArea(
@@ -134,8 +137,8 @@ Future<_Source?> _showSourceSheet(BuildContext context) {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            row(context, FLucideIcons.camera, 'Take a photo', _Source.photo),
-            row(context, FLucideIcons.video, 'Record a video', _Source.video),
+            if (camera) row(context, FLucideIcons.camera, 'Take a photo', _Source.photo),
+            if (camera) row(context, FLucideIcons.video, 'Record a video', _Source.video),
             row(context, FLucideIcons.images, 'Choose from photos', _Source.library),
             row(context, FLucideIcons.file, 'Add a document', _Source.document),
           ],
@@ -315,6 +318,15 @@ class _VideoViewState extends State<_VideoView> {
     super.dispose();
   }
 
+  Future<void> _openElsewhere() async {
+    try {
+      final OpenResult result = await OpenFilex.open(widget.path);
+      if (result.type != ResultType.done && mounted) showCemoSnack(context, 'No app here can play this video.');
+    } catch (_) {
+      if (mounted) showCemoSnack(context, 'No app here can play this video.');
+    }
+  }
+
   void _toggle() {
     final VideoPlayerValue v = _controller.value;
     if (v.isPlaying) {
@@ -329,8 +341,23 @@ class _VideoViewState extends State<_VideoView> {
   @override
   Widget build(BuildContext context) {
     if (_failed) {
-      return const Center(
-        child: Text('This video can’t be played.', style: TextStyle(color: Colors.white70, fontSize: 15)),
+      // No video player on this platform (Linux and Windows desktop), or a
+      // format the player can't read: offer the system's video app instead.
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const Text('This video can’t be played here.', style: TextStyle(color: Colors.white70, fontSize: 15)),
+            const SizedBox(height: Space.lg),
+            FButton(
+              variant: FButtonVariant.outline,
+              size: FButtonSizeVariant.sm,
+              prefix: const Icon(FLucideIcons.externalLink),
+              onPress: _openElsewhere,
+              child: const Text('Open in another app'),
+            ),
+          ],
+        ),
       );
     }
     if (!_controller.value.isInitialized) {
