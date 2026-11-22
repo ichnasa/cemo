@@ -66,12 +66,12 @@ class PillButton extends StatelessWidget {
       PillKind.secondary => FButtonVariant.outline,
       PillKind.text => FButtonVariant.ghost,
     };
-    return SizedBox(
-      height: height,
-      width: expand ? double.infinity : null,
+    return ConstrainedBox(
+      constraints: BoxConstraints(minHeight: height, minWidth: expand ? double.infinity : 0),
       child: FButton(
         variant: variant,
-        size: FButtonSizeVariant.lg,
+        // Forui's large size needs 48 pt; shorter pills use the medium size.
+        size: height >= 48 ? FButtonSizeVariant.lg : FButtonSizeVariant.md,
         mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
         onPress: onPressed,
         child: Text(label),
